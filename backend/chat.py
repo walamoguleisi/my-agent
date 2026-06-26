@@ -11,6 +11,8 @@ client = OpenAI(
     base_url=os.environ["DEEPSEEK_BASE_URL"],
 )
 
+"""
+非流式输出
 response = client.chat.completions.create(
     model = os.environ["DEEPSEEK_MODEL"],
     messages = [
@@ -20,3 +22,22 @@ response = client.chat.completions.create(
 )
 
 print(response.choices[0].message.content)
+"""
+
+"""流式输出"""
+
+stream = client.chat.completions.create(
+    model = os.environ["DEEPSEEK_MODEL"],
+    messages = [
+        {"role": "system", "content": "你是一个友好的助手。"},
+        {"role": "user", "content": "用三句话介绍下你自己。"},
+    ],
+    stream = True,
+)
+
+for chunk in stream:
+    delta = chunk.choices[0].delta
+    if delta.content:
+        print(delta.content, end="", flush=True)
+
+print
