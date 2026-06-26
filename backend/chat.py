@@ -24,7 +24,7 @@ response = client.chat.completions.create(
 print(response.choices[0].message.content)
 """
 
-"""流式输出"""
+"""流式输出
 
 stream = client.chat.completions.create(
     model = os.environ["DEEPSEEK_MODEL"],
@@ -40,4 +40,42 @@ for chunk in stream:
     if delta.content:
         print(delta.content, end="", flush=True)
 
-print
+print()
+"""
+
+"""chat with cycle"""
+messages = [
+    {"role": "system", "content": "你是一个友好的助手，用简介的中文回答。"},
+]
+
+print("跟 DeepSeek聊天。输入 exit 退出。\n")
+
+while True:
+    user_input = input("你：").strip()
+    if user_input.lower() in ("exit", "quit"):
+        break
+    if not user_input:   
+        continue   
+    
+    messages.append(
+        {"role": "user", "content": user_input}
+    )
+
+    stream = client.chat.completions.create(
+        model = os.environ["DEEPSEEK_MODEL"],
+        messages = messages,
+        stream = True,
+    )
+
+    print("AI: ", end="", flush=True)
+    reply_chunks = []
+    for chunk in stream:
+        delta = chunk.choices[0].delta
+        if delta.content:
+            print(delta.content, end="", flush=True)
+            reply_chunks.append(delta.content)
+    print("\n")
+
+    messages.append(
+        {"role": "assistant", "content": "".join(reply_chunks)}
+    )
