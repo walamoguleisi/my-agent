@@ -40,7 +40,7 @@ for chunk in stream:
     if delta.content:
         print(delta.content, end="", flush=True)
 
-print()
+print("\n")
 """
 
 """chat with cycle"""
