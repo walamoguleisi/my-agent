@@ -47,7 +47,7 @@ tools = [
 # === 第3步：第一次调用API，带上tools ===
 messages = [
     {"role": "system", "content": "你是一个友好的天气助手，但只支持中国大陆的天气查询"},
-    {"role": "user", "content": "What's the weather like in New York?"},
+    {"role": "user", "content": "What's the weather like in Shanghai?"},
 ]
 
 response = client.chat.completions.create(
