@@ -58,6 +58,7 @@ response = client.chat.completions.create(
 
 assistant_msg = response.choices[0].message
 print("=== 第一次响应 ===")
+# print("assistant_msg's type is",type(assistant_msg))
 print(f"content: {assistant_msg.content}")
 print(f"tool_calls:{assistant_msg.tool_calls}")
 
@@ -68,8 +69,9 @@ if assistant_msg.tool_calls:
     
     # 处理每一个工具调用 （这里先假设只有一个工具）
     for tool_call in assistant_msg.tool_calls:
+        # print("tool_call's type is",type(tool_call))
         func_name = tool_call.function.name
-        func_args = json.loads(tool_call.function.arguments)
+        func_args = json.loads(tool_call.function.arguments)     #这里的arguments是一个json字符串，需要反序列化成dict
         print(f"\n模型申请调用：{func_name}({func_args})")
 
         # 实际执行
