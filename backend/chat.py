@@ -40,7 +40,7 @@ for chunk in stream:
     if delta.content:
         print(delta.content, end="", flush=True)
 
-print("\n")
+print("\n")          #因为之前for循环使用的是end=''分割，因此直到最后一个chunk输出后才换行
 """
 
 """chat with cycle"""
@@ -68,14 +68,14 @@ while True:
     )
 
     print("AI: ", end="", flush=True)
-    reply_chunks = []
+    reply_chunks = []       #定义一个列表来存储流式输出的内容
     for chunk in stream:
         delta = chunk.choices[0].delta
         if delta.content:
             print(delta.content, end="", flush=True)
-            reply_chunks.append(delta.content)
+            reply_chunks.append(delta.content)   #将流式输出的内容添加到列表最后
     print("\n")
 
     messages.append(
-        {"role": "assistant", "content": "".join(reply_chunks)}
+        {"role": "assistant", "content": "".join(reply_chunks)}    #使用''连接，将流式返回列表的内容连成正常的句子。
     )

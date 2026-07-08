@@ -23,7 +23,7 @@ MAX_ITERATIONS = 20     #限制loop的最大循环次数是20
 # === 工具定义 ===
 
 def tool_list_files() -> str:
-    """列出WORKSPACE下的所有文件。"""
+    """这里不需要传入参数，就是直接列出WORKSPACE下的所有文件。"""
     files = [str(p.relative_to(WORKSPACE)) for p in WORKSPACE.rglob("*") if p.is_file()]
     if not files:
         return "（目录为空）"
@@ -32,8 +32,8 @@ def tool_list_files() -> str:
 def tool_read_file(path: str) -> str:
     """读取WORKSPACE下某个文件的内容。"""
     target = (WORKSPACE / path).resolve()          #得到一个标准绝对路径
-    if not str(target).startswith(str(WORKSPACE.resolve())):
-        return f"Error: 不允许越权访问！"
+    if not str(target).startswith(str(WORKSPACE.resolve())):    # 如果path是个类似../../etc/password之类的路径
+        return f"Error: 不允许越权访问！"       # tools中所有的错误没有使用raise Exception，而是返回一个Error开头的字符串给模型。
     if not target.exists():
         return f"Error: 文件不存在:{path}"
     return target.read_text(encoding="utf-8")
@@ -54,6 +54,7 @@ TOOL_FUNCTIONS = {
 }
 
 # === 工具描述（给模型看）===
+# 每个工具调用都对应上面一个函数实现。name字段比较关键，模型生成tool_call时会用这个名字，我们再用这个名字去TOOL_FUNCTIONS里找到对应的实现
 
 tools = [
     {
@@ -117,6 +118,7 @@ def run_agent(user_input: str) -> None:
     ]
 
     for iteration in range(MAX_ITERATIONS):
+        print(f"messages长度: {len(messages)}")
         print(f"\n--- 第{iteration +1} 轮 ---")
 
         stream = client.chat.completions.create(
@@ -159,50 +161,51 @@ def run_agent(user_input: str) -> None:
                         if tc_delta.function.arguments:
                             entry["arguments"] += tc_delta.function.arguments
             # 把本轮 assistant消息追加到messages
-            assistant_msg: dict = {"role": "assistant"}
-            if content_chunks:
-                assistant_msg["content"] = "".join(content_chunks)
-            if tool_calls_acc:
-                assistant_msg["tool_calls"] = [
-                    {
-                        "id": tc["id"],
-                        "type": "function",
-                        "function": {
-                            "name": tc["name"],
-                            "arguments": tc["arguments"]
-                        }
+        assistant_msg: dict = {"role": "assistant"}
+        if content_chunks:
+            assistant_msg["content"] = "".join(content_chunks)
+        if tool_calls_acc:
+            assistant_msg["tool_calls"] = [
+                {
+                    "id": tc["id"],
+                    "type": "function",
+                    "function": {
+                        "name": tc["name"],
+                        "arguments": tc["arguments"]
                     }
-                    for tc in tool_calls_acc.values()
-                ]
-            messages.append(assistant_msg)
+                }
+                for tc in tool_calls_acc.values()
+            ]
+        
+        messages.append(assistant_msg)
 
-            # 没有tool cals，循环结束
-            if not tool_calls_acc:
-                print()
-                return
+        # 没有tool calss，循环结束
+        if not tool_calls_acc:
+            print()
+            return
             
-            # 执行每个tool call
-            for tc in tool_calls_acc.values():
-                func_name = tc["name"]
-                args = json.loads(tc["arguments"]) if tc["arguments"] else {}
-                print(f"\n>>> 调用{func_name}({args})")
+        # 执行每个tool call
+        for tc in tool_calls_acc.values():
+            func_name = tc["name"]
+            args = json.loads(tc["arguments"]) if tc["arguments"] else {}
+            print(f"\n>>> 调用{func_name}({args})")
 
-                func = TOOL_FUNCTIONS.get(func_name)
-                if not func:
-                    result = f"Error：未知函数{func_name}"
-                else:
-                    try:
-                        result = func(**args)
-                    except Exception as e:
-                        result = f"Error： 工具执行异常：{e}"
+            func = TOOL_FUNCTIONS.get(func_name)
+            if not func:
+                result = f"Error：未知函数{func_name}"
+            else:
+                try:
+                    result = func(**args)
+                except Exception as e:
+                    result = f"Error： 工具执行异常：{e}"
                 
-                print(f"<<< {result[:200]}{'...' if len(result) > 200 else ''}")
+            print(f"<<< {result[:200]}{'...' if len(result) > 200 else ''}")
 
-                messages.append({
-                    "role": "tool",
-                    "tool_call_id": tc["id"],
-                    "content": result,
-                })
+            messages.append({
+                "role": "tool",
+                "tool_call_id": tc["id"],
+                "content": result,
+            })
     print(f"\n达到最大论述{MAX_ITERATIONS}，强制结束。")
 
 if __name__ == "__main__":
