@@ -128,7 +128,7 @@ def run_agent(user_input: str) -> None:
             stream = True,
         )
 
-        # 累计本轮的输出
+        # 累计本轮的输出，针对LLM返回的assistant message，从流中逐步收取contents和tool_calls.
         content_chunks: list[str] = []
         tool_calls_acc: dict[int, dict] = {}
 
