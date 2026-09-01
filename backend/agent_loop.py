@@ -1,4 +1,6 @@
 # backend/agent_loop.py
+# 3rd simple test of LLM API, with tool_call and agent loop
+# define some tools and tools description
 
 import json
 import os

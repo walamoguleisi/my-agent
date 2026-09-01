@@ -1,3 +1,6 @@
+# backend/tool_call.py
+# 2nd simple test of LLM API, with tool_call
+
 import json
 import os
 from pathlib import Path

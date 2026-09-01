@@ -1,3 +1,6 @@
+# backend/chat.py
+# 1st simple test of LLM API
+
 import os
 from pathlib import Path
 
