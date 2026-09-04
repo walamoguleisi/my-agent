@@ -4,12 +4,13 @@
 import json
 import os
 from pathlib import Path
-from typing import Generator
+from typing import Generator   # typing.Generator 是类型注解（类型提示），只给静态检查器（mypy、pylance）看，不参与运行，不是实际类。
 
 from dotenv import load_dotenv
 from openai import OpenAI
 
-from app.tools import TOOL_FUNCTIONS, TOOL_DEFINITIONS
+# from app.tools import TOOL_FUNCTIONS, TOOL_DEFINITIONS
+from app.tools import get_all_definitions, execute_tool
 
 load_dotenv(Path(__file__).parent.parent.parent / ".env")
 
@@ -19,6 +20,20 @@ client = OpenAI(
 )
 
 MAX_ITERATIONS = 20
+
+def _build_openai_tools() -> list[dict]:
+    """把 registry 里的 DEFINITION 转成 OpenAI tools 格式。"""
+    return [
+        {
+            "type": "function",
+            "function": {
+                "name": d["name"],
+                "description": d["description"],
+                "parameters": d["parameters"],
+            },
+        }
+        for d in get_all_definitions()
+    ]
 
 def append_tool_call_delta(acc: dict[int, dict], tc_delta) -> None:
     idx = tc_delta.index           # 数据结构中是index，存储对应工具调用的编号，是整型，仅在stream中出现
@@ -42,9 +57,9 @@ def append_tool_call_delta(acc: dict[int, dict], tc_delta) -> None:
 """ 需要返回一个字典型，用于func(**args)，另外加上对JSON字符串结构的检测
 这个函数返回了四种场景：
 1. 正常返回字典参数
-2. 返回空，传入的原始工具参数就是空
-3. 返回{"_raw", raw_arguments}，传入的JSON字符串无法解析
-4. 返回{"_value", value}，最后解析的JSON字符串不是字典类型
+2. 返回空，传入的原始工具参数就是空，针对例如tool_list_files()这种不需要参数的工具
+3. 返回{"_raw", raw_arguments}，传入的JSON字符串无法解析，针对传输过程中网络丢包导致JSON解析失败的情况，这个函数主要就是为了解决这个场景
+4. 返回{"_value", value}，最后解析的JSON字符串不是字典类型，未知场景
 """
 def parse_tool_args(raw_arguments: str) -> dict:       
     if not raw_arguments:
@@ -62,6 +77,12 @@ def parse_tool_args(raw_arguments: str) -> dict:
 def run_agent_events(user_message: str) -> Generator[dict, None, None]:
     # messages 是给模型的上下文
     # 事件是给外部看的执行过程，两条线都要维护
+    # Generator[YieldType, SendType, ReturnType]三个泛型参数：
+    # 1. YieldType：生成器每次yield的值的类型
+    # 2. SendType：生成器每次send的值的类型
+    # 3. ReturnType：生成器return的值的类型
+    # yield的值是给外部看的事件，send的值是外部传入的值，return的值是生成器结束时返回的值
+    # 下面程序中使用的yield是python的关键字，跟上面这个Generator的泛型参数没有关系，send和return都没有使用，所以send和return的类型都是None
 
     messages = [
         {
@@ -82,7 +103,7 @@ def run_agent_events(user_message: str) -> Generator[dict, None, None]:
             stream = client.chat.completions.create(
                 model = os.environ["MINIMAX_MODEL"],
                 messages = messages,
-                tools = TOOL_DEFINITIONS,
+                tools = _build_openai_tools(),
                 stream = True,
             )
         except Exception as e:
@@ -150,17 +171,19 @@ def run_agent_events(user_message: str) -> Generator[dict, None, None]:
                 "args": args,
             }
 
-            func = TOOL_FUNCTIONS.get(func_name)
-
-            try:
-                if func is None:
-                    result = f"Error: 未知函数 {func_name}"
-                elif "_raw" in args:
-                    result = f"Error: 工具参数不是合法JSON: {args['_raw']}"
-                else:
-                    result = func(**args)
-            except Exception as e:
-                result = f"Error: 工具执行异常：{e}"
+            # func = TOOL_FUNCTIONS.get(func_name)
+# 
+            # try:
+            #     if func is None:
+            #         result = f"Error: 未知函数 {func_name}"
+            #     elif "_raw" in args:
+            #         result = f"Error: 工具参数不是合法JSON: {args['_raw']}"
+            #     else:
+            #         result = func(**args)
+            # except Exception as e:
+            #     result = f"Error: 工具执行异常：{e}"
+            
+            result = execute_tool(func_name, args)
 
             is_error = isinstance(result, str) and result.startswith("Error:")   #is_error表示的是工具执行是否返回错误
 

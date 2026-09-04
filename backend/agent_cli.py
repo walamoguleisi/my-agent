@@ -42,7 +42,7 @@ def main() -> None:
         
         print("AI: ",end="", flush=True)
 
-        for event in run_agent_events(user_input):
+        for event in run_agent_events(user_input):   # 通过for循环来调用生成器
             print_event(event)
 
 if __name__ == "__main__":

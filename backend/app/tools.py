@@ -1,5 +1,5 @@
 # backend/app/tools.py
-# 4th simple test of LLM API, with tool_call and agent loop
+# 4th simple test of LLM API, only define tools function and tool description
 
 from pathlib import Path
 
